@@ -2,7 +2,7 @@
 
 **Live deployment:** https://hbplus-workspace-kaif.netlify.app
 
-A cross-platform React Native application (supporting both Web and Mobile platforms from a single codebase) implementing Google OAuth 2.0 authentication with strict domain gating.
+A React Native app that runs on web, iOS and Android from one codebase. Users sign in with Google and only `@hbplus.fit` accounts get through.
 
 Access is restricted exclusively to authorized organization accounts (**`@hbplus.fit`**). Any attempts to authenticate with personal or unauthorized domains (e.g., `@gmail.com`) are immediately terminated, sessions are revoked, and access is denied.
 
@@ -55,17 +55,15 @@ Access is restricted exclusively to authorized organization accounts (**`@hbplus
   - Blocks subdomain tricks and look-alike domains (`hbplus.fit.evil.com`).
   - Instantly revokes session tokens and displays:
     > *"Access restricted. Please login using your official domain email."*
-- **Enterprise SaaS UI**:
-  - Clean, human-designed interface following Linear/Stripe design standards.
-  - Official Google-compliant Sign-In button with proper typography and branding.
-  - Verified domain badges and session metadata card.
+- **UI**:
+  - Responsive login and dashboard screens with a Google-style sign-in button.
+  - Domain badge and session details on the dashboard.
 - **Role-Based Access Control (Bonus)**:
   - Supports `admin` and `user` roles.
   - Dedicated Admin Console with live user directory, role assignment, domain policy inspector, and security audit log.
 - **Route Protection**:
-  - Direct URL access to `/dashboard` is automatically guarded and redirected to `/login` if unauthenticated.
-- **Ready for Netlify**:
-  - Single-page application build output with redirect rules in `netlify.toml`.
+  - `RootNavigator` renders the dashboard only when a valid `@hbplus.fit` session exists. Any URL on the deployed site falls through to the login screen otherwise.
+- **Netlify**: static export with a catch-all rewrite to `index.html` in `netlify.toml`.
 
 ---
 
@@ -74,10 +72,10 @@ Access is restricted exclusively to authorized organization accounts (**`@hbplus
 ```text
 ├── assets/                  # Icons and brand assets
 ├── src/
-│   ├── components/          # UI primitives (GoogleSignInButton, Badge, AlertBanner, GoogleAccountChooserModal)
-│   ├── config/              # Domain whitelist and app configuration
+│   ├── components/          # UI primitives (GoogleSignInButton, Badge, AlertBanner)
+│   ├── constants/           # App config and theme tokens
 │   ├── context/             # AuthContext and state management
-│   ├── hooks/               # useAuth and useResponsive hooks
+│   ├── hooks/               # useResponsive
 │   ├── navigation/          # RootNavigator and route guards
 │   ├── screens/             # LoginScreen, DashboardScreen, AdminScreen
 │   ├── services/            # Supabase client, storage, audit logs, user directory
