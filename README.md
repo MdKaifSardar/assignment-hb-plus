@@ -161,6 +161,10 @@ Sessions on mobile are stored in the device keychain/keystore via `expo-secure-s
 
 Sessions are owned by the Supabase client. The app keeps no session copy of its own, so there is nothing in browser storage to edit by hand to get past the gate.
 
+### Testing notes
+
+- **Rejection:** sign in with any personal Google account (for example a `@gmail.com` address). You should see "Access restricted. Please login using your official domain email." and a `rejected` row appears under Admin → Sign-in activity for admins.
+
 ---
 
 ## Deployment to Netlify
