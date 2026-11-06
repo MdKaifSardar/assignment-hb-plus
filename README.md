@@ -78,7 +78,7 @@ Access is restricted exclusively to authorized organization accounts (**`@hbplus
 │   ├── hooks/               # useResponsive
 │   ├── navigation/          # RootNavigator and route guards
 │   ├── screens/             # LoginScreen, DashboardScreen, AdminScreen
-│   ├── services/            # Supabase client, audit logs, user directory
+│   ├── services/            # Supabase client, secure token storage, audit logs, user directory
 │   ├── types/               # TypeScript interfaces
 │   └── utils/               # Canonical domain validator and platform helpers
 ├── App.tsx                  # Application entry point
@@ -141,7 +141,14 @@ The application will open in your browser at `http://localhost:8081` (or next av
 ```bash
 npm start
 ```
-Scan the terminal QR code with **Expo Go** on your iOS or Android device.
+Scan the QR code with **Expo Go** (iOS or Android), or press `a` / `i` for an emulator.
+
+Google sign-in opens in an in-app browser and returns to the app through a deep link, so the redirect has to be allowed in Supabase (Authentication → URL Configuration → Redirect URLs):
+
+- Expo Go: `exp://**`
+- Standalone builds: `hbplus://auth-callback`
+
+Sessions on mobile are stored in the device keychain/keystore via `expo-secure-store`.
 
 ---
 

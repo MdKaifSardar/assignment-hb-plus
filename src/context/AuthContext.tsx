@@ -1,11 +1,17 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { AppState } from 'react-native';
+import * as Linking from 'expo-linking';
+import * as WebBrowser from 'expo-web-browser';
 import type { Session } from '@supabase/supabase-js';
 import { APP_CONFIG } from '../constants/config';
 import { AuthContextType, AuthSession, UserProfile } from '../types/auth';
 import { extractDomain, resolveUserRole, validateEmailDomain } from '../utils/domain';
 import { auditLogService } from '../services/auditLog';
 import { userService } from '../services/userService';
+import { isWeb } from '../utils/platform';
 import { isSupabaseConfigured, supabase, getOAuthRedirectUrl } from '../services/supabase';
+
+WebBrowser.maybeCompleteAuthSession();
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -93,9 +99,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .catch(() => undefined)
       .finally(() => isMounted && setIsLoading(false));
 
+    // Native timers are suspended in the background; resume refreshing when the app returns
+    const appState = isWeb
+      ? null
+      : AppState.addEventListener('change', (state) => {
+          if (state === 'active') supabase!.auth.startAutoRefresh();
+          else supabase!.auth.stopAutoRefresh();
+        });
+
     return () => {
       isMounted = false;
       data.subscription.unsubscribe();
+      appState?.remove();
     };
   }, []);
 
@@ -113,14 +128,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
 
     try {
-      const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      const redirectTo = getOAuthRedirectUrl();
+      const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: getOAuthRedirectUrl(),
+          redirectTo,
+          skipBrowserRedirect: !isWeb,
           queryParams: { prompt: 'select_account' },
         },
       });
       if (oauthError) throw oauthError;
+
+      // The browser leaves this page on web; on native the consent screen opens in an
+      // in-app browser and we finish the PKCE exchange from the deep link it returns to.
+      if (!isWeb && data.url) {
+        const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+        if (result.type !== 'success') {
+          setIsAuthenticating(false);
+          return false;
+        }
+
+        const { queryParams } = Linking.parse(result.url);
+        const code = queryParams?.code;
+        if (typeof code !== 'string') {
+          throw new Error(String(queryParams?.error_description ?? APP_CONFIG.messages.networkError));
+        }
+
+        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+        if (exchangeError) throw exchangeError;
+        setIsAuthenticating(false);
+      }
       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : APP_CONFIG.messages.networkError);
