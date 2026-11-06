@@ -13,6 +13,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<UserProfile | null>(null);
   const [session, setSession] = useState<AuthSession | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isAuthenticating, setIsAuthenticating] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   // Supabase emits SIGNED_IN on load, on tab refocus and again from getSession();
@@ -108,7 +109,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return false;
     }
 
-    setIsLoading(true);
+    setIsAuthenticating(true);
     setError(null);
 
     try {
@@ -123,7 +124,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : APP_CONFIG.messages.networkError);
-      setIsLoading(false);
+      setIsAuthenticating(false);
       return false;
     }
   }, []);
@@ -153,6 +154,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     user,
     session,
     isLoading,
+    isAuthenticating,
     error,
     signInWithGoogle,
     signOut,

@@ -72,7 +72,7 @@ Access is restricted exclusively to authorized organization accounts (**`@hbplus
 ```text
 ├── assets/                  # Icons and brand assets
 ├── src/
-│   ├── components/          # UI primitives (GoogleSignInButton, Badge, AlertBanner)
+│   ├── components/          # UI primitives (Button, Badge, AlertBanner, GoogleSignInButton, TabLink, DetailRow, Wordmark)
 │   ├── constants/           # App config and theme tokens
 │   ├── context/             # AuthContext and state management
 │   ├── hooks/               # useResponsive

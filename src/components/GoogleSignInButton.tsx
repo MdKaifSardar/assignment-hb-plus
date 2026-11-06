@@ -1,21 +1,13 @@
-import React, { useState } from 'react';
-import {
-  TouchableOpacity,
-  Text,
-  ActivityIndicator,
-  StyleSheet,
-  Platform,
-  ViewStyle,
-} from 'react-native';
+import React from 'react';
+import { ActivityIndicator, Platform, Pressable, StyleSheet, Text } from 'react-native';
 import { GoogleIcon } from './GoogleIcon';
-import { COLORS, TYPOGRAPHY, RADIUS, SPACING } from '../constants/theme';
+import { COLORS, MIN_TOUCH_TARGET, TYPOGRAPHY } from '../constants/theme';
 
 interface GoogleSignInButtonProps {
   onPress: () => void;
   isLoading?: boolean;
   disabled?: boolean;
   text?: string;
-  style?: ViewStyle;
 }
 
 export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
@@ -23,37 +15,29 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
   isLoading = false,
   disabled = false,
   text = 'Continue with Google',
-  style,
 }) => {
-  const [isHovered, setIsHovered] = useState(false);
+  const inactive = disabled || isLoading;
 
   return (
-    <TouchableOpacity
+    <Pressable
       onPress={onPress}
-      disabled={disabled || isLoading}
-      activeOpacity={0.85}
-      // @ts-ignore react-native-web only: hover events are missing from RN types
-      onMouseEnter={() => setIsHovered(true)}
-      // @ts-ignore react-native-web only: hover events are missing from RN types
-      onMouseLeave={() => setIsHovered(false)}
-      style={[
-        styles.button,
-        isHovered && styles.buttonHovered,
-        (disabled || isLoading) && styles.buttonDisabled,
-        style,
-      ]}
+      disabled={inactive}
       accessibilityRole="button"
       accessibilityLabel={text}
+      accessibilityState={{ disabled: inactive, busy: isLoading }}
+      style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
+        styles.button,
+        (hovered || pressed) && styles.buttonActive,
+        inactive && styles.buttonInactive,
+      ]}
     >
       {isLoading ? (
-        <ActivityIndicator color={COLORS.slate[600]} size="small" style={styles.spinner} />
+        <ActivityIndicator size="small" color={COLORS.inkMuted} style={styles.icon} />
       ) : (
-        <GoogleIcon size={20} />
+        <GoogleIcon size={18} />
       )}
-      <Text style={[styles.text, (disabled || isLoading) && styles.textDisabled]}>
-        {isLoading ? 'Connecting to Google...' : text}
-      </Text>
-    </TouchableOpacity>
+      <Text style={styles.text}>{isLoading ? 'Redirecting to Google…' : text}</Text>
+    </Pressable>
   );
 };
 
@@ -62,58 +46,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: MIN_TOUCH_TARGET + 4,
+    paddingHorizontal: 16,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#DADCE0',
-    borderRadius: RADIUS.md,
-    paddingVertical: 12,
-    paddingHorizontal: SPACING.xl,
-    minHeight: 48,
-    ...Platform.select({
-      web: {
-        cursor: 'pointer',
-        transition: 'all 0.15s ease-in-out',
-        boxShadow: '0 1px 2px 0 rgba(60, 64, 67, 0.3), 0 1px 3px 1px rgba(60, 64, 67, 0.15)',
-      },
-      default: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-        elevation: 2,
-      },
-    }),
+    borderRadius: 4,
   },
-  buttonHovered: Platform.select({
-    web: {
-      backgroundColor: '#F8FAFC',
-      borderColor: '#CBD5E1',
-      boxShadow: '0 1px 3px 1px rgba(60, 64, 67, 0.2)',
-    },
-    default: {},
-  }),
-  buttonDisabled: {
+  buttonActive: {
+    backgroundColor: '#F8F9FA',
+    borderColor: '#BDC1C6',
+  },
+  buttonInactive: {
     opacity: 0.6,
-    ...Platform.select({
-      web: {
-        cursor: 'not-allowed' as any,
-      },
-      default: {},
-    }),
   },
-  spinner: {
-    marginRight: 12,
+  icon: {
+    marginRight: 0,
   },
   text: {
+    marginLeft: 12,
     color: '#3C4043',
-    fontSize: TYPOGRAPHY.sizes.md,
+    fontSize: 14,
     fontWeight: TYPOGRAPHY.weights.medium,
-    fontFamily: Platform.select({
-      web: 'Roboto, -apple-system, sans-serif',
-      default: TYPOGRAPHY.fontFamily,
-    }),
-  },
-  textDisabled: {
-    color: '#80868B',
+    fontFamily: Platform.select({ web: 'Roboto, Arial, sans-serif', default: TYPOGRAPHY.sans }),
+    letterSpacing: 0.25,
   },
 });

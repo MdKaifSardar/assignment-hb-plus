@@ -1,175 +1,130 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-} from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useAuth } from '../context/AuthContext';
-import { Badge } from '../components/Badge';
-import { COLORS, TYPOGRAPHY, RADIUS, SPACING, SHADOWS } from '../constants/theme';
+import { Badge, BadgeVariant } from '../components/Badge';
+import { Button } from '../components/Button';
+import { DetailRow } from '../components/DetailRow';
+import { TabLink } from '../components/TabLink';
+import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
 import { userService } from '../services/userService';
 import { auditLogService, AuditLogEntry } from '../services/auditLog';
 import { UserProfile, UserRole } from '../types/auth';
 
+type Tab = 'people' | 'activity' | 'policy';
+
+const STATUS_LABEL: Record<AuditLogEntry['status'], { text: string; variant: BadgeVariant }> = {
+  allowed: { text: 'Allowed', variant: 'accent' },
+  rejected: { text: 'Rejected', variant: 'danger' },
+  signed_out: { text: 'Signed out', variant: 'neutral' },
+};
+
 export const AdminScreen: React.FC = () => {
-  const { allowedDomain } = useAuth();
+  const { user: currentUser, allowedDomain } = useAuth();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
-  const [activeTab, setActiveTab] = useState<'directory' | 'audit' | 'policies'>('directory');
+  const [tab, setTab] = useState<Tab>('people');
+  const [loading, setLoading] = useState(true);
+  const [pendingId, setPendingId] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadData();
+  const load = useCallback(async () => {
+    const [directory, recent] = await Promise.all([
+      userService.getDirectoryUsers(),
+      auditLogService.getRecentLogs(),
+    ]);
+    setUsers(directory);
+    setLogs(recent);
+    setLoading(false);
   }, []);
 
-  async function loadData() {
-    const dirUsers = await userService.getDirectoryUsers();
-    const auditLogs = await auditLogService.getRecentLogs();
-    setUsers(dirUsers);
-    setLogs(auditLogs);
-  }
+  useEffect(() => {
+    load();
+  }, [load]);
 
-  async function handleToggleRole(userId: string, currentRole: UserRole) {
-    const nextRole: UserRole = currentRole === 'admin' ? 'user' : 'admin';
-    await userService.updateUserRole(userId, nextRole);
-    await loadData();
+  async function changeRole(target: UserProfile) {
+    const next: UserRole = target.role === 'admin' ? 'user' : 'admin';
+    setPendingId(target.id);
+    await userService.updateUserRole(target.id, next);
+    await load();
+    setPendingId(null);
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.tabBar}>
-        <TouchableOpacity
-          onPress={() => setActiveTab('directory')}
-          style={[styles.tabItem, activeTab === 'directory' && styles.tabItemActive]}
-        >
-          <Text
-            style={[styles.tabLabel, activeTab === 'directory' && styles.tabLabelActive]}
-          >
-            User Directory ({users.length})
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => setActiveTab('audit')}
-          style={[styles.tabItem, activeTab === 'audit' && styles.tabItemActive]}
-        >
-          <Text style={[styles.tabLabel, activeTab === 'audit' && styles.tabLabelActive]}>
-            Security Audit Logs ({logs.length})
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => setActiveTab('policies')}
-          style={[styles.tabItem, activeTab === 'policies' && styles.tabItemActive]}
-        >
-          <Text
-            style={[styles.tabLabel, activeTab === 'policies' && styles.tabLabelActive]}
-          >
-            Domain Whitelist Policy
-          </Text>
-        </TouchableOpacity>
+    <View>
+      <View style={styles.tabs} accessibilityRole="tablist">
+        <TabLink label={`People (${users.length})`} active={tab === 'people'} onPress={() => setTab('people')} />
+        <TabLink label="Sign-in activity" active={tab === 'activity'} onPress={() => setTab('activity')} />
+        <TabLink label="Domain policy" active={tab === 'policy'} onPress={() => setTab('policy')} />
       </View>
 
-      {activeTab === 'directory' && (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Organization Personnel</Text>
-          <Text style={styles.cardSubtitle}>
-            Users authenticated under the @{allowedDomain} security perimeter.
-          </Text>
+      {loading ? (
+        <ActivityIndicator color={COLORS.inkMuted} style={styles.loading} />
+      ) : null}
 
-          <View style={styles.userList}>
-            {users.map((u) => (
-              <View key={u.id} style={styles.userRow}>
-                <View style={styles.userInfo}>
-                  <Text style={styles.userName}>{u.displayName}</Text>
-                  <Text style={styles.userEmail}>{u.email}</Text>
-                </View>
-
-                <View style={styles.userActions}>
-                  <Badge
-                    label={u.role.toUpperCase()}
-                    variant={u.role === 'admin' ? 'info' : 'neutral'}
-                  />
-                  <TouchableOpacity
-                    onPress={() => handleToggleRole(u.id, u.role)}
-                    style={styles.roleBtn}
-                  >
-                    <Text style={styles.roleBtnText}>
-                      {u.role === 'admin' ? 'Set as User' : 'Set as Admin'}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ))}
-          </View>
-        </View>
-      )}
-
-      {activeTab === 'audit' && (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Authentication Activity Stream</Text>
-          <Text style={styles.cardSubtitle}>
-            Live inspection of allowed vs rejected domain access attempts.
-          </Text>
-
-          {logs.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyText}>No recent audit log entries captured yet.</Text>
-            </View>
+      {!loading && tab === 'people' && (
+        <View style={styles.list}>
+          {users.length === 0 ? (
+            <Text style={styles.empty}>Nobody has signed in yet.</Text>
           ) : (
-            <View style={styles.logList}>
-              {logs.map((log) => (
-                <View key={log.id} style={styles.logItem}>
-                  <View style={styles.logHeader}>
-                    <Badge
-                      label={log.status === 'allowed' ? 'GRANTED' : log.status === 'rejected' ? 'BLOCKED' : 'SIGNOUT'}
-                      variant={log.status === 'allowed' ? 'success' : log.status === 'rejected' ? 'error' : 'neutral'}
-                      dot
-                    />
-                    <Text style={styles.logTimestamp}>
-                      {new Date(log.timestamp).toLocaleTimeString()}
-                    </Text>
+            users.map((person) => {
+              const isSelf = person.email === currentUser?.email;
+              return (
+                <View key={person.id} style={styles.row}>
+                  <View style={styles.rowMain}>
+                    <Text style={styles.primary}>{person.displayName}</Text>
+                    <Text style={styles.secondary}>{person.email}</Text>
                   </View>
-                  <Text style={styles.logEmail}>{log.email}</Text>
-                  {log.reason && <Text style={styles.logReason}>{log.reason}</Text>}
+                  <View style={styles.rowActions}>
+                    <Badge
+                      label={person.role === 'admin' ? 'Admin' : 'Member'}
+                      variant={person.role === 'admin' ? 'accent' : 'neutral'}
+                    />
+                    <Button
+                      label={person.role === 'admin' ? 'Make member' : 'Make admin'}
+                      accessibilityLabel={`${person.role === 'admin' ? 'Make member' : 'Make admin'}: ${person.email}`}
+                      onPress={() => changeRole(person)}
+                      loading={pendingId === person.id}
+                      disabled={isSelf}
+                    />
+                  </View>
                 </View>
-              ))}
-            </View>
+              );
+            })
           )}
         </View>
       )}
 
-      {activeTab === 'policies' && (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Domain Restriction Policy</Text>
-          <Text style={styles.cardSubtitle}>
-            Active cryptographic and validation parameters enforced on every OAuth handshake.
-          </Text>
+      {!loading && tab === 'activity' && (
+        <View style={styles.list}>
+          {logs.length === 0 ? (
+            <Text style={styles.empty}>No sign-in attempts recorded yet.</Text>
+          ) : (
+            logs.map((entry) => {
+              const status = STATUS_LABEL[entry.status];
+              return (
+                <View key={entry.id} style={styles.row}>
+                  <View style={styles.rowMain}>
+                    <Text style={styles.primary}>{entry.email}</Text>
+                    {entry.reason ? <Text style={styles.secondary}>{entry.reason}</Text> : null}
+                    <Text style={styles.timestamp}>
+                      {new Date(entry.timestamp).toLocaleString(undefined, {
+                        dateStyle: 'medium',
+                        timeStyle: 'short',
+                      })}
+                    </Text>
+                  </View>
+                  <Badge label={status.text} variant={status.variant} />
+                </View>
+              );
+            })
+          )}
+        </View>
+      )}
 
-          <View style={styles.policyGrid}>
-            <View style={styles.policyRow}>
-              <Text style={styles.policyLabel}>Allowed Organization Domain:</Text>
-              <Text style={styles.policyValue}>@{allowedDomain}</Text>
-            </View>
-
-            <View style={styles.policyRow}>
-              <Text style={styles.policyLabel}>Match Algorithm:</Text>
-              <Text style={styles.policyValue}>Exact RFC Canonical Domain (`split('@')[1]`)</Text>
-            </View>
-
-            <View style={styles.policyRow}>
-              <Text style={styles.policyLabel}>Subdomain Bypass Prevention:</Text>
-              <Text style={[styles.policyValue, { color: COLORS.success[700] }]}>Enforced</Text>
-            </View>
-
-            <View style={styles.policyRow}>
-              <Text style={styles.policyLabel}>Violation Action:</Text>
-              <Text style={[styles.policyValue, { color: COLORS.error[700] }]}>
-                Immediate Session Invalidation & Token Revoke
-              </Text>
-            </View>
-          </View>
+      {!loading && tab === 'policy' && (
+        <View style={styles.policy}>
+          <DetailRow label="Allowed domain" value={`@${allowedDomain}`} />
+          <DetailRow label="Matching" value="Exact match on the part after the @. Subdomains and look-alike domains are rejected." />
+          <DetailRow label="On mismatch" value="The Google session is signed out and the attempt is written to the activity log." />
         </View>
       )}
     </View>
@@ -177,151 +132,70 @@ export const AdminScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    width: '100%',
-    marginTop: SPACING.md,
-  },
-  tabBar: {
+  tabs: {
     flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.slate[200],
-    marginBottom: SPACING.lg,
     flexWrap: 'wrap',
-  },
-  tabItem: {
-    paddingVertical: SPACING.sm + 2,
-    paddingHorizontal: SPACING.md,
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
-    marginRight: SPACING.md,
-  },
-  tabItemActive: {
-    borderBottomColor: COLORS.primary[600],
-  },
-  tabLabel: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    fontWeight: TYPOGRAPHY.weights.medium,
-    color: COLORS.slate[500],
-  },
-  tabLabelActive: {
-    color: COLORS.primary[600],
-    fontWeight: TYPOGRAPHY.weights.semibold,
-  },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: RADIUS.xl,
-    padding: SPACING.xl,
-    borderWidth: 1,
-    borderColor: COLORS.slate[200],
-    ...SHADOWS.card,
-  },
-  cardTitle: {
-    fontSize: TYPOGRAPHY.sizes.lg,
-    fontWeight: TYPOGRAPHY.weights.bold,
-    color: COLORS.slate[900],
-    marginBottom: 4,
-  },
-  cardSubtitle: {
-    fontSize: TYPOGRAPHY.sizes.xs,
-    color: COLORS.slate[500],
     marginBottom: SPACING.lg,
   },
-  userList: {
-    gap: SPACING.sm,
+  loading: {
+    marginVertical: SPACING.xxl,
   },
-  userRow: {
+  list: {
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.line,
+    borderRadius: RADIUS.lg,
+  },
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: SPACING.md,
     paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.lg,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.slate[100],
+    borderBottomColor: COLORS.line,
   },
-  userInfo: {
+  rowMain: {
     flex: 1,
+    minWidth: 200,
   },
-  userName: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    fontWeight: TYPOGRAPHY.weights.semibold,
-    color: COLORS.slate[900],
-  },
-  userEmail: {
-    fontSize: TYPOGRAPHY.sizes.xs,
-    color: COLORS.slate[500],
-  },
-  userActions: {
+  rowActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: SPACING.sm,
-  },
-  roleBtn: {
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: RADIUS.sm,
-    borderWidth: 1,
-    borderColor: COLORS.slate[300],
-    backgroundColor: COLORS.slate[50],
-  },
-  roleBtnText: {
-    fontSize: 11,
-    color: COLORS.slate[700],
-  },
-  emptyState: {
-    padding: SPACING.xl,
-    alignItems: 'center',
-  },
-  emptyText: {
-    color: COLORS.slate[400],
-    fontSize: TYPOGRAPHY.sizes.sm,
-  },
-  logList: {
-    gap: SPACING.sm,
-  },
-  logItem: {
-    padding: SPACING.md,
-    backgroundColor: COLORS.slate[50],
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.slate[200],
-  },
-  logHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  logTimestamp: {
-    fontSize: 11,
-    color: COLORS.slate[400],
-  },
-  logEmail: {
-    fontSize: TYPOGRAPHY.sizes.sm,
-    fontWeight: TYPOGRAPHY.weights.medium,
-    color: COLORS.slate[800],
-  },
-  logReason: {
-    fontSize: 11,
-    color: COLORS.slate[500],
-    marginTop: 2,
-  },
-  policyGrid: {
     gap: SPACING.md,
   },
-  policyRow: {
-    padding: SPACING.md,
-    backgroundColor: COLORS.slate[50],
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.slate[200],
+  primary: {
+    fontFamily: TYPOGRAPHY.sans,
+    fontSize: TYPOGRAPHY.sizes.base,
+    fontWeight: TYPOGRAPHY.weights.medium,
+    color: COLORS.ink,
   },
-  policyLabel: {
-    fontSize: TYPOGRAPHY.sizes.xs,
-    color: COLORS.slate[500],
-    marginBottom: 2,
-  },
-  policyValue: {
+  secondary: {
+    fontFamily: TYPOGRAPHY.sans,
     fontSize: TYPOGRAPHY.sizes.sm,
-    fontWeight: TYPOGRAPHY.weights.semibold,
-    color: COLORS.slate[900],
+    color: COLORS.inkMuted,
+    marginTop: 2,
+  },
+  timestamp: {
+    fontFamily: TYPOGRAPHY.sans,
+    fontSize: TYPOGRAPHY.sizes.xs,
+    color: COLORS.inkSubtle,
+    marginTop: 2,
+  },
+  empty: {
+    fontFamily: TYPOGRAPHY.sans,
+    fontSize: TYPOGRAPHY.sizes.sm,
+    color: COLORS.inkSubtle,
+    padding: SPACING.xl,
+    textAlign: 'center',
+  },
+  policy: {
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.line,
+    borderRadius: RADIUS.lg,
+    paddingHorizontal: SPACING.lg,
   },
 });

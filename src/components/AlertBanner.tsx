@@ -1,115 +1,72 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { COLORS, TYPOGRAPHY, RADIUS, SPACING } from '../constants/theme';
-
-export type AlertType = 'error' | 'warning' | 'success' | 'info';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { COLORS, MIN_TOUCH_TARGET, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
 
 interface AlertBannerProps {
-  type?: AlertType;
-  title?: string;
   message: string;
+  title?: string;
   onDismiss?: () => void;
 }
 
-export const AlertBanner: React.FC<AlertBannerProps> = ({
-  type = 'error',
-  title,
-  message,
-  onDismiss,
-}) => {
-  const palette = ALERT_COLORS[type];
-
-  return (
-    <View style={[styles.container, { backgroundColor: palette.bg, borderColor: palette.border }]}>
-      <View style={styles.content}>
-        <View style={[styles.indicator, { backgroundColor: palette.accent }]} />
-        <View style={styles.textContainer}>
-          {title && <Text style={[styles.title, { color: palette.text }]}>{title}</Text>}
-          <Text style={[styles.message, { color: palette.text }]}>{message}</Text>
-        </View>
-      </View>
-      {onDismiss && (
-        <TouchableOpacity
-          onPress={onDismiss}
-          style={styles.dismissButton}
-          accessibilityLabel="Dismiss notification"
-          accessibilityRole="button"
-        >
-          <Text style={[styles.dismissText, { color: palette.text }]}>✕</Text>
-        </TouchableOpacity>
-      )}
+export const AlertBanner: React.FC<AlertBannerProps> = ({ message, title, onDismiss }) => (
+  <View style={styles.container} accessibilityRole="alert">
+    <View style={styles.text}>
+      {title ? <Text style={styles.title}>{title}</Text> : null}
+      <Text style={styles.message}>{message}</Text>
     </View>
-  );
-};
-
-const ALERT_COLORS = {
-  error: {
-    bg: COLORS.error[50],
-    border: COLORS.error[200],
-    text: COLORS.error[700],
-    accent: COLORS.error[600],
-  },
-  warning: {
-    bg: COLORS.warning[50],
-    border: '#FDE68A',
-    text: COLORS.warning[700],
-    accent: COLORS.warning[600],
-  },
-  success: {
-    bg: COLORS.success[50],
-    border: COLORS.success[200],
-    text: COLORS.success[700],
-    accent: COLORS.success[600],
-  },
-  info: {
-    bg: COLORS.primary[50],
-    border: COLORS.primary[100],
-    text: COLORS.primary[700],
-    accent: COLORS.primary[600],
-  },
-};
+    {onDismiss ? (
+      <Pressable
+        onPress={onDismiss}
+        accessibilityRole="button"
+        accessibilityLabel="Dismiss message"
+        style={styles.dismiss}
+        hitSlop={4}
+      >
+        <Text style={styles.dismissText}>Dismiss</Text>
+      </Pressable>
+    ) : null}
+  </View>
+);
 
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: SPACING.md,
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    marginVertical: SPACING.sm,
+    alignItems: 'flex-start',
+    backgroundColor: COLORS.dangerSoft,
+    borderLeftWidth: 3,
+    borderLeftColor: COLORS.danger,
+    borderRadius: RADIUS.sm,
+    paddingLeft: SPACING.lg,
+    paddingVertical: SPACING.md,
   },
-  content: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  text: {
     flex: 1,
-  },
-  indicator: {
-    width: 4,
-    height: '100%',
-    minHeight: 28,
-    borderRadius: 2,
-    marginRight: SPACING.md,
-  },
-  textContainer: {
-    flex: 1,
+    paddingVertical: SPACING.xs,
   },
   title: {
+    fontFamily: TYPOGRAPHY.sans,
     fontSize: TYPOGRAPHY.sizes.sm,
     fontWeight: TYPOGRAPHY.weights.semibold,
+    color: COLORS.danger,
     marginBottom: 2,
   },
   message: {
+    fontFamily: TYPOGRAPHY.sans,
     fontSize: TYPOGRAPHY.sizes.sm,
-    lineHeight: 18,
-    fontWeight: TYPOGRAPHY.weights.regular,
+    lineHeight: 19,
+    color: COLORS.ink,
   },
-  dismissButton: {
-    padding: SPACING.xs,
-    marginLeft: SPACING.sm,
+  dismiss: {
+    minHeight: MIN_TOUCH_TARGET,
+    paddingHorizontal: SPACING.md,
+    justifyContent: 'center',
+    marginTop: -SPACING.md,
+    marginBottom: -SPACING.md,
   },
   dismissText: {
+    fontFamily: TYPOGRAPHY.sans,
     fontSize: TYPOGRAPHY.sizes.sm,
-    fontWeight: TYPOGRAPHY.weights.bold,
+    color: COLORS.inkMuted,
+    textDecorationLine: 'underline',
   },
 });

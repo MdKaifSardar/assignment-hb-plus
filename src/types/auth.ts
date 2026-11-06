@@ -28,6 +28,7 @@ export interface AuthContextType {
   user: UserProfile | null;
   session: AuthSession | null;
   isLoading: boolean;
+  isAuthenticating: boolean;
   error: string | null;
   signInWithGoogle: () => Promise<boolean>;
   signOut: () => Promise<void>;
