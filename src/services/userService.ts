@@ -45,6 +45,28 @@ const INITIAL_DIRECTORY_USERS: UserProfile[] = [
   },
 ];
 
+interface UserRow {
+  id: string;
+  email: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  domain: string;
+  role: UserRole;
+  last_login_at: string;
+  created_at: string;
+}
+
+const fromRow = (row: UserRow): UserProfile => ({
+  id: row.id,
+  email: row.email,
+  displayName: row.display_name || row.email.split('@')[0],
+  avatarUrl: row.avatar_url ?? undefined,
+  domain: row.domain,
+  role: row.role,
+  lastLoginAt: row.last_login_at,
+  createdAt: row.created_at,
+});
+
 class UserService {
   private inMemoryUsers: UserProfile[] = [...INITIAL_DIRECTORY_USERS];
 
@@ -57,16 +79,7 @@ class UserService {
           .order('created_at', { ascending: false });
 
         if (!error && data && data.length > 0) {
-          return data.map((row: any) => ({
-            id: row.id,
-            email: row.email,
-            displayName: row.display_name || row.email.split('@')[0],
-            avatarUrl: row.avatar_url,
-            domain: row.domain,
-            role: row.role as UserRole,
-            lastLoginAt: row.last_login_at,
-            createdAt: row.created_at,
-          }));
+          return (data as UserRow[]).map(fromRow);
         }
       } catch {
         // Supabase unreachable; the in-memory copy keeps the app usable
@@ -75,9 +88,18 @@ class UserService {
     return [...this.inMemoryUsers];
   }
 
-  async upsertUser(user: UserProfile): Promise<UserProfile> {
+  async upsertUser(incoming: UserProfile): Promise<UserProfile> {
+    let user = incoming;
     if (isSupabaseConfigured && supabase) {
       try {
+        // A role granted from the admin console must survive the next login.
+        const { data: existing } = await supabase
+          .from('user_profiles')
+          .select('id, role')
+          .eq('email', incoming.email)
+          .maybeSingle();
+        if (existing) user = { ...incoming, id: existing.id, role: existing.role as UserRole };
+
         await supabase.from('user_profiles').upsert(
           {
             id: user.id,

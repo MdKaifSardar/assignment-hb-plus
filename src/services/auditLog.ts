@@ -10,6 +10,15 @@ export interface AuditLogEntry {
   userAgent?: string;
 }
 
+interface AuditRow {
+  id: string;
+  timestamp: string;
+  email: string;
+  domain: string | null;
+  status: AuditLogEntry['status'];
+  reason: string | null;
+}
+
 class AuditLogService {
   private inMemoryLogs: AuditLogEntry[] = [];
 
@@ -53,13 +62,13 @@ class AuditLogService {
           .limit(50);
 
         if (!error && data && data.length > 0) {
-          return data.map((row: any) => ({
+          return (data as AuditRow[]).map((row) => ({
             id: row.id,
             timestamp: row.timestamp,
             email: row.email,
             domain: row.domain,
-            status: row.status as AuditLogEntry['status'],
-            reason: row.reason,
+            status: row.status,
+            reason: row.reason ?? undefined,
           }));
         }
       } catch {
