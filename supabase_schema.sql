@@ -38,7 +38,5 @@ create policy "Allow insert audit_logs" on public.audit_logs for insert with che
 insert into public.user_profiles (id, email, display_name, domain, role)
 values
   ('usr_hb_01', 'admin@hbplus.fit', 'System Administrator', 'hbplus.fit', 'admin'),
-  ('usr_hb_02', 'kaif@hbplus.fit', 'Kaif Sardar', 'hbplus.fit', 'admin'),
-  ('usr_hb_03', 'sarah.jenkins@hbplus.fit', 'Sarah Jenkins', 'hbplus.fit', 'user'),
-  ('usr_hb_04', 'marcus.vance@hbplus.fit', 'Marcus Vance', 'hbplus.fit', 'user')
+  ('usr_hb_02', 'kaif@hbplus.fit', 'Kaif Sardar', 'hbplus.fit', 'admin')
 on conflict (email) do nothing;

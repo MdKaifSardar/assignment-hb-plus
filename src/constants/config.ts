@@ -3,9 +3,10 @@ export const APP_CONFIG = {
   slug: 'hbplus-workspace',
   version: '1.0.0',
   allowedDomain: process.env.EXPO_PUBLIC_ALLOWED_DOMAIN || 'hbplus.fit',
-  adminEmails: (process.env.EXPO_PUBLIC_ADMIN_EMAILS || 'admin@hbplus.fit,kaif@hbplus.fit')
+  adminEmails: (process.env.EXPO_PUBLIC_ADMIN_EMAILS || '')
     .split(',')
-    .map((e: string) => e.trim().toLowerCase()),
+    .map((e: string) => e.trim().toLowerCase())
+    .filter(Boolean),
   messages: {
     accessRestricted: 'Access restricted. Please login using your official domain email.',
     sessionExpired: 'Your session has expired. Please sign in again.',

@@ -115,7 +115,9 @@ Copy `.env.example` to `.env`:
 cp .env.example .env
 ```
 
-Default configuration:
+Admins are only the emails listed in `EXPO_PUBLIC_ADMIN_EMAILS`; with no value set, nobody is an admin.
+
+Example configuration:
 ```env
 EXPO_PUBLIC_ALLOWED_DOMAIN=hbplus.fit
 EXPO_PUBLIC_ADMIN_EMAILS=admin@hbplus.fit,kaif@hbplus.fit
