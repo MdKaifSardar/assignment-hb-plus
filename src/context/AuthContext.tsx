@@ -4,6 +4,7 @@ import { AuthContextType, AuthSession, UserProfile } from '../types/auth';
 import { extractDomain, resolveUserRole, validateEmailDomain } from '../utils/domain';
 import { sessionStorage, SESSION_STORAGE_KEY } from '../services/storage';
 import { auditLogService } from '../services/auditLog';
+import { userService } from '../services/userService';
 import { isSupabaseConfigured, supabase, getOAuthRedirectUrl } from '../services/supabase';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -53,6 +54,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         lastLoginAt: new Date().toISOString(),
         createdAt: rawSessionData.user.created_at || new Date().toISOString(),
       };
+
+      await userService.upsertUser(authUser);
+      await auditLogService.logEvent({
+        email,
+        domain: domainCheck.domain,
+        status: 'allowed',
+        reason: 'Authorized domain login via Google OAuth',
+      });
 
       const newSession: AuthSession = {
         accessToken: rawSessionData.access_token,
@@ -203,6 +212,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
 
         await sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(newSession));
+        await userService.upsertUser(authenticatedUser);
         await auditLogService.logEvent({
           email: emailToAuthenticate,
           domain: domainCheck.domain,

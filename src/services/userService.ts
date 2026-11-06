@@ -1,5 +1,6 @@
 import { UserProfile, UserRole } from '../types/auth';
 import { APP_CONFIG } from '../constants/config';
+import { isSupabaseConfigured, supabase } from './supabase';
 
 const INITIAL_DIRECTORY_USERS: UserProfile[] = [
   {
@@ -45,28 +46,89 @@ const INITIAL_DIRECTORY_USERS: UserProfile[] = [
 ];
 
 class UserService {
-  private users: UserProfile[] = [...INITIAL_DIRECTORY_USERS];
+  private inMemoryUsers: UserProfile[] = [...INITIAL_DIRECTORY_USERS];
 
   async getDirectoryUsers(): Promise<UserProfile[]> {
-    return [...this.users];
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('user_profiles')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (!error && data && data.length > 0) {
+          return data.map((row: any) => ({
+            id: row.id,
+            email: row.email,
+            displayName: row.display_name || row.email.split('@')[0],
+            avatarUrl: row.avatar_url,
+            domain: row.domain,
+            role: row.role as UserRole,
+            lastLoginAt: row.last_login_at,
+            createdAt: row.created_at,
+          }));
+        }
+      } catch {
+        // Fallback to in-memory store
+      }
+    }
+    return [...this.inMemoryUsers];
   }
 
   async upsertUser(user: UserProfile): Promise<UserProfile> {
-    const existingIndex = this.users.findIndex((u) => u.email.toLowerCase() === user.email.toLowerCase());
+    if (isSupabaseConfigured && supabase) {
+      try {
+        await supabase.from('user_profiles').upsert(
+          {
+            id: user.id,
+            email: user.email,
+            display_name: user.displayName,
+            avatar_url: user.avatarUrl,
+            domain: user.domain,
+            role: user.role,
+            last_login_at: new Date().toISOString(),
+          },
+          { onConflict: 'email' }
+        );
+      } catch {
+        // Fallback to in-memory store
+      }
+    }
+
+    const existingIndex = this.inMemoryUsers.findIndex(
+      (u) => u.email.toLowerCase() === user.email.toLowerCase()
+    );
     if (existingIndex >= 0) {
-      this.users[existingIndex] = {
-        ...this.users[existingIndex],
+      this.inMemoryUsers[existingIndex] = {
+        ...this.inMemoryUsers[existingIndex],
         ...user,
         lastLoginAt: new Date().toISOString(),
       };
-      return this.users[existingIndex];
+      return this.inMemoryUsers[existingIndex];
     }
-    this.users.unshift(user);
+    this.inMemoryUsers.unshift(user);
     return user;
   }
 
   async updateUserRole(userId: string, newRole: UserRole): Promise<boolean> {
-    const target = this.users.find((u) => u.id === userId);
+    if (isSupabaseConfigured && supabase) {
+      try {
+        const { error } = await supabase
+          .from('user_profiles')
+          .update({ role: newRole })
+          .eq('id', userId);
+
+        if (!error) {
+          const target = this.inMemoryUsers.find((u) => u.id === userId);
+          if (target) target.role = newRole;
+          return true;
+        }
+      } catch {
+        // Fallback to in-memory store
+      }
+    }
+
+    const target = this.inMemoryUsers.find((u) => u.id === userId);
     if (!target) return false;
     target.role = newRole;
     return true;
