@@ -31,7 +31,7 @@ class AuditLogService {
           timestamp: fullEntry.timestamp,
         });
       } catch {
-        // Fallback to in-memory store
+        // Supabase unreachable; the in-memory copy keeps the app usable
       }
     }
 
@@ -63,7 +63,7 @@ class AuditLogService {
           }));
         }
       } catch {
-        // Fallback to in-memory store
+        // Supabase unreachable; the in-memory copy keeps the app usable
       }
     }
     return [...this.inMemoryLogs];

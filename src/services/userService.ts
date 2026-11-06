@@ -69,7 +69,7 @@ class UserService {
           }));
         }
       } catch {
-        // Fallback to in-memory store
+        // Supabase unreachable; the in-memory copy keeps the app usable
       }
     }
     return [...this.inMemoryUsers];
@@ -91,7 +91,7 @@ class UserService {
           { onConflict: 'email' }
         );
       } catch {
-        // Fallback to in-memory store
+        // Supabase unreachable; the in-memory copy keeps the app usable
       }
     }
 
@@ -124,7 +124,7 @@ class UserService {
           return true;
         }
       } catch {
-        // Fallback to in-memory store
+        // Supabase unreachable; the in-memory copy keeps the app usable
       }
     }
 

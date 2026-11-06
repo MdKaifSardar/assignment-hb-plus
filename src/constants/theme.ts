@@ -1,7 +1,6 @@
 import { Platform } from 'react-native';
 
 export const COLORS = {
-  // Neutral Slate Palette
   slate: {
     50: '#F8FAFC',
     100: '#F1F5F9',
@@ -16,7 +15,6 @@ export const COLORS = {
     950: '#020617',
   },
 
-  // Primary Brand (Royal Indigo / Blue)
   primary: {
     50: '#EFF6FF',
     100: '#DBEAFE',
@@ -27,7 +25,6 @@ export const COLORS = {
     800: '#1E40AF',
   },
 
-  // Success / Verified States
   success: {
     50: '#F0FDF4',
     100: '#DCFCE7',
@@ -36,7 +33,6 @@ export const COLORS = {
     700: '#15803D',
   },
 
-  // Error / Access Restricted States
   error: {
     50: '#FEF2F2',
     100: '#FEE2E2',
@@ -45,7 +41,6 @@ export const COLORS = {
     700: '#B91C1C',
   },
 
-  // Warning States
   warning: {
     50: '#FFFBEB',
     100: '#FEF3C7',

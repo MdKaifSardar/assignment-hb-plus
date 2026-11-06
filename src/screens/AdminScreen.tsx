@@ -38,7 +38,6 @@ export const AdminScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      {/* Sub Navigation */}
       <View style={styles.tabBar}>
         <TouchableOpacity
           onPress={() => setActiveTab('directory')}
@@ -72,7 +71,6 @@ export const AdminScreen: React.FC = () => {
         </TouchableOpacity>
       </View>
 
-      {/* Directory Tab */}
       {activeTab === 'directory' && (
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Organization Personnel</Text>
@@ -108,7 +106,6 @@ export const AdminScreen: React.FC = () => {
         </View>
       )}
 
-      {/* Audit Log Tab */}
       {activeTab === 'audit' && (
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Authentication Activity Stream</Text>
@@ -143,7 +140,6 @@ export const AdminScreen: React.FC = () => {
         </View>
       )}
 
-      {/* Policies Tab */}
       {activeTab === 'policies' && (
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Domain Restriction Policy</Text>

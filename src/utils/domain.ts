@@ -1,10 +1,6 @@
 import { APP_CONFIG } from '../constants/config';
 import { DomainValidationResult } from '../types/auth';
 
-/**
- * Extracts and canonicalizes the domain portion of an email address.
- * Returns null if the email is malformed or missing a valid domain segment.
- */
 export function extractDomain(email: string): string | null {
   if (!email || typeof email !== 'string') return null;
 
@@ -23,10 +19,7 @@ export function extractDomain(email: string): string | null {
   return canonicalDomain;
 }
 
-/**
- * Validates whether an email belongs strictly to the permitted organization domain.
- * Enforces exact domain matching to block subdomains or look-alike attacks (e.g. hbplus.fit.evil.com).
- */
+// Exact match only: a substring or suffix check would admit hbplus.fit.evil.com
 export function validateEmailDomain(
   email: string,
   allowedDomain: string = APP_CONFIG.allowedDomain
@@ -57,9 +50,6 @@ export function validateEmailDomain(
   };
 }
 
-/**
- * Resolves user role based on configured administrative email lists.
- */
 export function resolveUserRole(email: string): 'admin' | 'user' {
   const normalized = email.trim().toLowerCase();
   return APP_CONFIG.adminEmails.includes(normalized) ? 'admin' : 'user';

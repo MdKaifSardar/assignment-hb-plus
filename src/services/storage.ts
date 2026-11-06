@@ -2,10 +2,6 @@ import { isWeb } from '../utils/platform';
 
 const SESSION_STORAGE_KEY = 'hbplus_auth_session';
 
-/**
- * Cross-platform session persistence.
- * Safe fallback for web LocalStorage and in-memory native runtime.
- */
 class SessionStorage {
   private memoryCache: Map<string, string> = new Map();
 
@@ -26,7 +22,7 @@ class SessionStorage {
         window.localStorage.setItem(key, value);
         return;
       } catch {
-        // Fallback to memory cache
+        // quota exceeded or storage blocked; keep it in memory
       }
     }
     this.memoryCache.set(key, value);
@@ -38,7 +34,7 @@ class SessionStorage {
         window.localStorage.removeItem(key);
         return;
       } catch {
-        // Ignore
+        // storage blocked, nothing to remove
       }
     }
     this.memoryCache.delete(key);
@@ -49,7 +45,7 @@ class SessionStorage {
       try {
         window.localStorage.clear();
       } catch {
-        // Ignore
+        // storage blocked, nothing to clear
       }
     }
     this.memoryCache.clear();

@@ -8,7 +8,7 @@ import { COLORS, TYPOGRAPHY } from '../constants/theme';
 export const RootNavigator: React.FC = () => {
   const { user, isLoading } = useAuth();
 
-  // Guard against flash of unauthenticated content during session restoration
+  // Hold until the stored session is checked so the login form never flashes
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -16,12 +16,11 @@ export const RootNavigator: React.FC = () => {
           <Text style={styles.brandText}>HB+</Text>
         </View>
         <ActivityIndicator size="large" color={COLORS.primary[600]} style={styles.spinner} />
-        <Text style={styles.loadingText}>Verifying security credentials...</Text>
+        <Text style={styles.loadingText}>Checking your session...</Text>
       </View>
     );
   }
 
-  // Route Protection: Unauthenticated or non-domain users cannot view Dashboard
   if (!user) {
     return <LoginScreen />;
   }

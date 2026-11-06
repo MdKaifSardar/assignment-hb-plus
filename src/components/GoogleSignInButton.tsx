@@ -32,9 +32,9 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
       onPress={onPress}
       disabled={disabled || isLoading}
       activeOpacity={0.85}
-      // @ts-ignore - Web hover events
+      // @ts-ignore react-native-web only: hover events are missing from RN types
       onMouseEnter={() => setIsHovered(true)}
-      // @ts-ignore - Web hover events
+      // @ts-ignore react-native-web only: hover events are missing from RN types
       onMouseLeave={() => setIsHovered(false)}
       style={[
         styles.button,

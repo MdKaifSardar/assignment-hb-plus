@@ -35,7 +35,6 @@ export const LoginScreen: React.FC = () => {
         keyboardShouldPersistTaps="handled"
       >
         <View style={[styles.card, isMobileView && styles.cardMobile]}>
-          {/* Organization Header */}
           <View style={styles.header}>
             <View style={styles.brandIcon}>
               <Text style={styles.brandInitial}>HB+</Text>
@@ -46,7 +45,6 @@ export const LoginScreen: React.FC = () => {
             </Text>
           </View>
 
-          {/* Domain Restriction Notice */}
           <View style={styles.domainNotice}>
             <View style={styles.domainNoticeHeader}>
               <Text style={styles.domainNoticeLabel}>Restricted Access</Text>
@@ -59,7 +57,6 @@ export const LoginScreen: React.FC = () => {
             </Text>
           </View>
 
-          {/* Active Error Alert */}
           {error && (
             <AlertBanner
               type="error"
@@ -69,7 +66,6 @@ export const LoginScreen: React.FC = () => {
             />
           )}
 
-          {/* Primary Google SSO Action - Directly triggers live Google OAuth */}
           <View style={styles.actionSection}>
             <GoogleSignInButton
               onPress={handleGoogleSignIn}
@@ -78,14 +74,12 @@ export const LoginScreen: React.FC = () => {
             />
           </View>
 
-          {/* Security Guarantee Details */}
           <View style={styles.securityFooter}>
             <Text style={styles.securityText}>
               Protected by OAuth 2.0 PKCE protocol and domain authorization gates.
             </Text>
           </View>
 
-          {/* Evaluation Presets (For fast grading and testing authorized vs disallowed cases) */}
           <View style={styles.testerContainer}>
             <TouchableOpacity
               onPress={() => setShowPresets(!showPresets)}

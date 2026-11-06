@@ -28,7 +28,6 @@ export const DashboardScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      {/* Top Navigation Bar */}
       <View style={styles.navBar}>
         <View style={styles.navBrand}>
           <View style={styles.navLogo}>
@@ -36,7 +35,7 @@ export const DashboardScreen: React.FC = () => {
           </View>
           <View>
             <Text style={styles.navTitle}>HB+ Fit Workspace</Text>
-            <Text style={styles.navSubtitle}>Internal Enterprise Portal</Text>
+            <Text style={styles.navSubtitle}>Internal workspace</Text>
           </View>
         </View>
 
@@ -100,7 +99,6 @@ export const DashboardScreen: React.FC = () => {
             <AdminScreen />
           ) : (
             <>
-              {/* User Profile Card */}
               <View style={styles.profileCard}>
                 <View style={[styles.profileHeader, isMobileView && styles.profileHeaderMobile]}>
                   <View style={styles.avatarContainer}>
@@ -134,7 +132,6 @@ export const DashboardScreen: React.FC = () => {
                 </View>
               </View>
 
-              {/* Quick Metrics / Status Cards */}
               <View style={[styles.metricsGrid, isMobileView && styles.metricsGridMobile]}>
                 <View style={styles.metricCard}>
                   <Text style={styles.metricLabel}>Domain Whitelist</Text>
@@ -157,7 +154,6 @@ export const DashboardScreen: React.FC = () => {
                 </View>
               </View>
 
-              {/* Access Policy Information */}
               <View style={styles.infoSection}>
                 <Text style={styles.sectionHeading}>Security Architecture</Text>
                 <View style={styles.infoCard}>

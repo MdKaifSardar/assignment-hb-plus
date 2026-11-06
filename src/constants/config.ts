@@ -1,9 +1,3 @@
-/**
- * HB+ Fit Application Configuration
- *
- * Core security domain whitelist and authorization policies.
- */
-
 export const APP_CONFIG = {
   name: 'HB+ Fit Workspace',
   slug: 'hbplus-workspace',

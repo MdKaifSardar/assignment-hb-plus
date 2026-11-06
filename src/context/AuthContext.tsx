@@ -80,7 +80,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     async function hydrateSession() {
       try {
         if (isSupabaseConfigured && supabase) {
-          // Listen for real-time OAuth redirects
           const { data } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
             if (event === 'SIGNED_IN' && currentSession?.user?.email) {
               await handleSessionVerification(currentSession.user.email, currentSession);
@@ -88,7 +87,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           });
           authListenerSubscription = data.subscription;
 
-          // Check current active session
           const { data: sessionData } = await supabase.auth.getSession();
           if (sessionData?.session?.user?.email) {
             await handleSessionVerification(sessionData.session.user.email, sessionData.session);
@@ -96,7 +94,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
 
-        // Local storage fallback for sandbox sessions
         const rawSession = await sessionStorage.getItem(SESSION_STORAGE_KEY);
         if (!rawSession) {
           if (isMounted) setIsLoading(false);
@@ -140,10 +137,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
   }, []);
 
-  /**
-   * Primary Google Sign-In Handler.
-   * Redirects to real Google OAuth (accounts.google.com) via Supabase.
-   */
   const signInWithGoogle = useCallback(
     async (providedEmail?: string): Promise<boolean> => {
       setIsLoading(true);

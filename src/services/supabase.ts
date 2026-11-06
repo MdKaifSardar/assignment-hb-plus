@@ -22,9 +22,6 @@ export const supabase = isSupabaseConfigured
     })
   : null;
 
-/**
- * Resolves the appropriate OAuth redirect URL based on runtime platform.
- */
 export function getOAuthRedirectUrl(): string {
   if (isWeb && typeof window !== 'undefined') {
     return `${window.location.origin}`;
