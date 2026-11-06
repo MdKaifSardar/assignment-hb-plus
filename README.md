@@ -78,7 +78,7 @@ Access is restricted exclusively to authorized organization accounts (**`@hbplus
 │   ├── hooks/               # useResponsive
 │   ├── navigation/          # RootNavigator and route guards
 │   ├── screens/             # LoginScreen, DashboardScreen, AdminScreen
-│   ├── services/            # Supabase client, storage, audit logs, user directory
+│   ├── services/            # Supabase client, audit logs, user directory
 │   ├── types/               # TypeScript interfaces
 │   └── utils/               # Canonical domain validator and platform helpers
 ├── App.tsx                  # Application entry point
@@ -143,15 +143,14 @@ Scan the terminal QR code with **Expo Go** on your iOS or Android device.
 
 ---
 
-## Evaluation Sandbox (Reviewer Quick-Test)
+## How Domain Restriction Works
 
-For evaluation and testing without needing a corporate Google Workspace account, the Login Screen includes a built-in **Evaluation Sandbox**:
+1. `signInWithGoogle` sends the user to Google through Supabase Auth.
+2. When Supabase returns a session, `AuthContext` runs the email through `validateEmailDomain`, which lowercases the domain and compares it for exact equality with `EXPO_PUBLIC_ALLOWED_DOMAIN`. `hbplus.fit.evil.com` and `attacker-hbplus.fit` both fail.
+3. A mismatch calls `supabase.auth.signOut()`, writes a `rejected` row to `audit_logs` and shows the required error message. The dashboard is never mounted.
+4. A match upserts the profile, keeps any role already stored for that email, writes an `allowed` row and mounts the dashboard.
 
-1. Click **"Open Quick-Test Presets"** on the login screen.
-2. Click **"Test Authorized Account (kaif@hbplus.fit)"** → Successfully signs in, navigates to the Protected Dashboard, and displays the verified green domain badge.
-3. Click **"Test Disallowed Personal (user@gmail.com)"** → Session is immediately revoked, local storage is purged, and the exact required alert is displayed:
-   > *"Access restricted. Please login using your official domain email."*
-4. Click **"Test Administrator Account (admin@hbplus.fit)"** → Unlocks the **Admin Console** tab with real-time audit logs and user directory.
+Sessions are owned by the Supabase client. The app keeps no session copy of its own, so there is nothing in browser storage to edit by hand to get past the gate.
 
 ---
 
@@ -171,7 +170,7 @@ Set `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`, `EXPO_PUBLIC_AL
 
 ## Database Setup
 
-Run `supabase_schema.sql` in the Supabase SQL Editor. It creates `user_profiles` and `audit_logs`, enables row level security and seeds the directory. Both services fall back to an in-memory store if the tables are unreachable.
+Run `supabase_schema.sql` in the Supabase SQL Editor. It creates `user_profiles` and `audit_logs`, enables row level security and seeds the directory. If the tables are unreachable, the services fall back to an in-memory store for the current page load.
 
 In Supabase, add the deployed URL and `hbplus://auth-callback` under Authentication → URL Configuration → Redirect URLs, and enable the Google provider with your OAuth client credentials.
 
