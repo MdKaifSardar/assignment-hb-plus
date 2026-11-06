@@ -29,7 +29,7 @@ export interface AuthContextType {
   session: AuthSession | null;
   isLoading: boolean;
   error: string | null;
-  signInWithGoogle: (simulatedEmail?: string) => Promise<boolean>;
+  signInWithGoogle: () => Promise<boolean>;
   signOut: () => Promise<void>;
   clearError: () => void;
   allowedDomain: string;

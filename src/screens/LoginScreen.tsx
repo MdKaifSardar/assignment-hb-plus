@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
   StyleSheet,
   SafeAreaView,
   ScrollView,
-  TouchableOpacity,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { GoogleSignInButton } from '../components/GoogleSignInButton';
@@ -13,12 +12,10 @@ import { AlertBanner } from '../components/AlertBanner';
 import { Badge } from '../components/Badge';
 import { COLORS, TYPOGRAPHY, RADIUS, SPACING, SHADOWS } from '../constants/theme';
 import { useResponsive } from '../hooks/useResponsive';
-import { APP_CONFIG } from '../constants/config';
 
 export const LoginScreen: React.FC = () => {
   const { signInWithGoogle, isLoading, error, clearError, allowedDomain } = useAuth();
   const { isMobileView } = useResponsive();
-  const [showPresets, setShowPresets] = useState(false);
 
   const handleGoogleSignIn = async () => {
     clearError();
@@ -78,59 +75,6 @@ export const LoginScreen: React.FC = () => {
             <Text style={styles.securityText}>
               Protected by OAuth 2.0 PKCE protocol and domain authorization gates.
             </Text>
-          </View>
-
-          <View style={styles.testerContainer}>
-            <TouchableOpacity
-              onPress={() => setShowPresets(!showPresets)}
-              style={styles.testerToggle}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.testerToggleText}>
-                {showPresets ? 'Hide Evaluation Quick-Tests' : 'Show Evaluation Quick-Tests'}
-              </Text>
-            </TouchableOpacity>
-
-            {showPresets && (
-              <View style={styles.testerBox}>
-                <Text style={styles.testerTitle}>Reviewer Domain Verification Presets</Text>
-                <Text style={styles.testerDesc}>
-                  Click either preset to test exact domain gating and restriction responses:
-                </Text>
-
-                <View style={styles.testerButtons}>
-                  <TouchableOpacity
-                    style={[styles.testBtn, styles.testBtnAllowed]}
-                    onPress={() => signInWithGoogle(`kaif@${APP_CONFIG.allowedDomain}`)}
-                    disabled={isLoading}
-                  >
-                    <Text style={styles.testBtnAllowedText}>
-                      ✓ Test Authorized Account (kaif@{APP_CONFIG.allowedDomain})
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={[styles.testBtn, styles.testBtnRejected]}
-                    onPress={() => signInWithGoogle('user@gmail.com')}
-                    disabled={isLoading}
-                  >
-                    <Text style={styles.testBtnRejectedText}>
-                      ✕ Test Disallowed Personal (user@gmail.com)
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={[styles.testBtn, styles.testBtnAdmin]}
-                    onPress={() => signInWithGoogle(`admin@${APP_CONFIG.allowedDomain}`)}
-                    disabled={isLoading}
-                  >
-                    <Text style={styles.testBtnAdminText}>
-                      ★ Test Administrator Account (admin@{APP_CONFIG.allowedDomain})
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
           </View>
         </View>
       </ScrollView>
@@ -242,74 +186,5 @@ const styles = StyleSheet.create({
     color: COLORS.slate[400],
     textAlign: 'center',
     lineHeight: 16,
-  },
-  testerContainer: {
-    marginTop: SPACING.lg,
-  },
-  testerToggle: {
-    paddingVertical: SPACING.sm,
-    alignItems: 'center',
-  },
-  testerToggleText: {
-    fontSize: TYPOGRAPHY.sizes.xs,
-    fontWeight: TYPOGRAPHY.weights.medium,
-    color: COLORS.primary[600],
-  },
-  testerBox: {
-    marginTop: SPACING.sm,
-    padding: SPACING.md,
-    backgroundColor: COLORS.slate[50],
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.slate[200],
-  },
-  testerTitle: {
-    fontSize: TYPOGRAPHY.sizes.xs,
-    fontWeight: TYPOGRAPHY.weights.semibold,
-    color: COLORS.slate[800],
-    marginBottom: 4,
-  },
-  testerDesc: {
-    fontSize: 11,
-    color: COLORS.slate[500],
-    marginBottom: SPACING.sm,
-    lineHeight: 15,
-  },
-  testerButtons: {
-    gap: 8,
-  },
-  testBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: RADIUS.sm,
-    borderWidth: 1,
-    alignItems: 'center',
-  },
-  testBtnAllowed: {
-    backgroundColor: COLORS.success[50],
-    borderColor: COLORS.success[200],
-  },
-  testBtnAllowedText: {
-    fontSize: 12,
-    fontWeight: TYPOGRAPHY.weights.medium,
-    color: COLORS.success[700],
-  },
-  testBtnRejected: {
-    backgroundColor: COLORS.error[50],
-    borderColor: COLORS.error[200],
-  },
-  testBtnRejectedText: {
-    fontSize: 12,
-    fontWeight: TYPOGRAPHY.weights.medium,
-    color: COLORS.error[700],
-  },
-  testBtnAdmin: {
-    backgroundColor: COLORS.primary[50],
-    borderColor: COLORS.primary[100],
-  },
-  testBtnAdminText: {
-    fontSize: 12,
-    fontWeight: TYPOGRAPHY.weights.medium,
-    color: COLORS.primary[700],
   },
 });

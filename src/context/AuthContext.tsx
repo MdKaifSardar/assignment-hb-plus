@@ -1,8 +1,8 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import type { Session } from '@supabase/supabase-js';
 import { APP_CONFIG } from '../constants/config';
 import { AuthContextType, AuthSession, UserProfile } from '../types/auth';
 import { extractDomain, resolveUserRole, validateEmailDomain } from '../utils/domain';
-import { sessionStorage, SESSION_STORAGE_KEY } from '../services/storage';
 import { auditLogService } from '../services/auditLog';
 import { userService } from '../services/userService';
 import { isSupabaseConfigured, supabase, getOAuthRedirectUrl } from '../services/supabase';
@@ -15,47 +15,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let isMounted = true;
-    let authListenerSubscription: { unsubscribe: () => void } | null = null;
+  // Supabase emits SIGNED_IN on load, on tab refocus and again from getSession();
+  // remember the token already verified so each login is audited once.
+  const verifiedToken = useRef<string | null>(null);
 
-    async function handleSessionVerification(email: string, rawSessionData: any) {
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase) {
+      setIsLoading(false);
+      return;
+    }
+
+    let isMounted = true;
+
+    async function verifySession(raw: Session) {
+      const email = raw.user.email;
+      if (!email || verifiedToken.current === raw.access_token) return;
+      verifiedToken.current = raw.access_token;
+
       const domainCheck = validateEmailDomain(email);
 
       if (!domainCheck.isValid) {
-        if (isSupabaseConfigured && supabase) {
-          await supabase.auth.signOut();
-        }
+        await supabase!.auth.signOut();
         await auditLogService.logEvent({
           email,
           domain: extractDomain(email),
           status: 'rejected',
-          reason: 'Live OAuth callback with unauthorized domain',
+          reason: 'OAuth callback with unauthorized domain',
         });
         if (isMounted) {
           setUser(null);
           setSession(null);
           setError(APP_CONFIG.messages.accessRestricted);
         }
-        return false;
+        return;
       }
 
-      const role = resolveUserRole(email);
-      const authUser: UserProfile = {
-        id: rawSessionData.user.id,
+      const profile = await userService.upsertUser({
+        id: raw.user.id,
         email,
         displayName:
-          rawSessionData.user.user_metadata?.full_name ||
-          rawSessionData.user.user_metadata?.name ||
-          email.split('@')[0],
-        avatarUrl: rawSessionData.user.user_metadata?.avatar_url,
+          raw.user.user_metadata?.full_name || raw.user.user_metadata?.name || email.split('@')[0],
+        avatarUrl: raw.user.user_metadata?.avatar_url,
         domain: domainCheck.domain!,
-        role,
+        role: resolveUserRole(email),
         lastLoginAt: new Date().toISOString(),
-        createdAt: rawSessionData.user.created_at || new Date().toISOString(),
-      };
+        createdAt: raw.user.created_at,
+      });
 
-      await userService.upsertUser(authUser);
       await auditLogService.logEvent({
         email,
         domain: domainCheck.domain,
@@ -63,73 +69,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         reason: 'Authorized domain login via Google OAuth',
       });
 
-      const newSession: AuthSession = {
-        accessToken: rawSessionData.access_token,
-        refreshToken: rawSessionData.refresh_token,
-        expiresAt: (rawSessionData.expires_at || 0) * 1000,
-        user: authUser,
-      };
-
       if (isMounted) {
-        setUser(authUser);
-        setSession(newSession);
-      }
-      return true;
-    }
-
-    async function hydrateSession() {
-      try {
-        if (isSupabaseConfigured && supabase) {
-          const { data } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
-            if (event === 'SIGNED_IN' && currentSession?.user?.email) {
-              await handleSessionVerification(currentSession.user.email, currentSession);
-            }
-          });
-          authListenerSubscription = data.subscription;
-
-          const { data: sessionData } = await supabase.auth.getSession();
-          if (sessionData?.session?.user?.email) {
-            await handleSessionVerification(sessionData.session.user.email, sessionData.session);
-            return;
-          }
-        }
-
-        const rawSession = await sessionStorage.getItem(SESSION_STORAGE_KEY);
-        if (!rawSession) {
-          if (isMounted) setIsLoading(false);
-          return;
-        }
-
-        const parsedSession: AuthSession = JSON.parse(rawSession);
-        const isExpired = Date.now() > parsedSession.expiresAt;
-        const domainCheck = validateEmailDomain(parsedSession.user.email);
-
-        if (isExpired || !domainCheck.isValid) {
-          await sessionStorage.removeItem(SESSION_STORAGE_KEY);
-          if (isMounted) {
-            setUser(null);
-            setSession(null);
-            if (!domainCheck.isValid) {
-              setError(APP_CONFIG.messages.accessRestricted);
-            }
-          }
-        } else {
-          if (isMounted) {
-            setUser(parsedSession.user);
-            setSession(parsedSession);
-          }
-        }
-      } catch {
-        await sessionStorage.removeItem(SESSION_STORAGE_KEY);
-      } finally {
-        if (isMounted) setIsLoading(false);
+        setUser(profile);
+        setSession({
+          accessToken: raw.access_token,
+          refreshToken: raw.refresh_token,
+          expiresAt: (raw.expires_at ?? 0) * 1000,
+          user: profile,
+        });
       }
     }
 
-    hydrateSession();
+    const { data } = supabase.auth.onAuthStateChange((event, current) => {
+      if (event === 'SIGNED_IN' && current) {
+        verifySession(current).finally(() => isMounted && setIsLoading(false));
+      }
+    });
+
+    supabase.auth
+      .getSession()
+      .then(({ data: { session: existing } }) => (existing ? verifySession(existing) : undefined))
+      .catch(() => undefined)
+      .finally(() => isMounted && setIsLoading(false));
+
     return () => {
       isMounted = false;
-      authListenerSubscription?.unsubscribe();
+      data.subscription.unsubscribe();
     };
   }, []);
 
@@ -137,101 +102,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
   }, []);
 
-  const signInWithGoogle = useCallback(
-    async (providedEmail?: string): Promise<boolean> => {
-      setIsLoading(true);
-      setError(null);
+  const signInWithGoogle = useCallback(async (): Promise<boolean> => {
+    if (!isSupabaseConfigured || !supabase) {
+      setError(APP_CONFIG.messages.networkError);
+      return false;
+    }
 
-      try {
-        if (isSupabaseConfigured && supabase && !providedEmail) {
-          const { error: oauthError } = await supabase.auth.signInWithOAuth({
-            provider: 'google',
-            options: {
-              redirectTo: getOAuthRedirectUrl(),
-              queryParams: {
-                prompt: 'select_account',
-              },
-            },
-          });
-          if (oauthError) throw oauthError;
-          return true;
-        }
+    setIsLoading(true);
+    setError(null);
 
-        if (!providedEmail) {
-          setIsLoading(false);
-          return false;
-        }
-
-        const emailToAuthenticate = providedEmail.trim();
-        const domainCheck = validateEmailDomain(emailToAuthenticate);
-
-        if (!domainCheck.isValid) {
-          await auditLogService.logEvent({
-            email: emailToAuthenticate,
-            domain: extractDomain(emailToAuthenticate),
-            status: 'rejected',
-            reason: 'Domain mismatch against whitelist',
-          });
-
-          await sessionStorage.removeItem(SESSION_STORAGE_KEY);
-          setUser(null);
-          setSession(null);
-          setError(APP_CONFIG.messages.accessRestricted);
-          return false;
-        }
-
-        const role = resolveUserRole(emailToAuthenticate);
-        const userName = emailToAuthenticate
-          .split('@')[0]
-          .split('.')
-          .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-          .join(' ');
-
-        const authenticatedUser: UserProfile = {
-          id: 'usr_' + Math.random().toString(36).substring(2, 10),
-          email: emailToAuthenticate,
-          displayName: userName,
-          avatarUrl: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(userName)}`,
-          domain: domainCheck.domain!,
-          role,
-          lastLoginAt: new Date().toISOString(),
-          createdAt: new Date().toISOString(),
-        };
-
-        const newSession: AuthSession = {
-          accessToken: 'tok_' + Math.random().toString(36).substring(2, 15),
-          expiresAt: Date.now() + 24 * 60 * 60 * 1000,
-          user: authenticatedUser,
-        };
-
-        await sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(newSession));
-        await userService.upsertUser(authenticatedUser);
-        await auditLogService.logEvent({
-          email: emailToAuthenticate,
-          domain: domainCheck.domain,
-          status: 'allowed',
-          reason: 'Authorized domain match',
-        });
-
-        setUser(authenticatedUser);
-        setSession(newSession);
-        return true;
-      } catch (err: any) {
-        setError(err?.message || APP_CONFIG.messages.networkError);
-        return false;
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    []
-  );
+    try {
+      const { error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: getOAuthRedirectUrl(),
+          queryParams: { prompt: 'select_account' },
+        },
+      });
+      if (oauthError) throw oauthError;
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : APP_CONFIG.messages.networkError);
+      setIsLoading(false);
+      return false;
+    }
+  }, []);
 
   const signOut = useCallback(async (): Promise<void> => {
     setIsLoading(true);
     try {
-      if (isSupabaseConfigured && supabase) {
-        await supabase.auth.signOut();
-      }
+      await supabase?.auth.signOut();
       if (user) {
         await auditLogService.logEvent({
           email: user.email,
@@ -240,7 +140,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           reason: 'User initiated logout',
         });
       }
-      await sessionStorage.removeItem(SESSION_STORAGE_KEY);
+      verifiedToken.current = null;
       setUser(null);
       setSession(null);
       setError(null);
