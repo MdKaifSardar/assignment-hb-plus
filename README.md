@@ -1,5 +1,7 @@
 # HB+ Fit Workspace — Cross-Platform Client
 
+**Live deployment:** https://hbplus-workspace-kaif.netlify.app
+
 A cross-platform React Native application (supporting both Web and Mobile platforms from a single codebase) implementing Google OAuth 2.0 authentication with strict domain gating.
 
 Access is restricted exclusively to authorized organization accounts (**`@hbplus.fit`**). Any attempts to authenticate with personal or unauthorized domains (e.g., `@gmail.com`) are immediately terminated, sessions are revoked, and access is denied.
@@ -164,3 +166,17 @@ npm run build:web
 ```
 
 The compiled single-page web bundle is placed in `dist/`. `netlify.toml` handles routing rewrites (`/* /index.html 200`) automatically.
+
+Set `EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`, `EXPO_PUBLIC_ALLOWED_DOMAIN` and `EXPO_PUBLIC_ADMIN_EMAILS` in the Netlify site environment before building; Expo inlines them at build time.
+
+---
+
+## Database Setup
+
+Run `supabase_schema.sql` in the Supabase SQL Editor. It creates `user_profiles` and `audit_logs`, enables row level security and seeds the directory. Both services fall back to an in-memory store if the tables are unreachable.
+
+In Supabase, add the deployed URL and `hbplus://auth-callback` under Authentication → URL Configuration → Redirect URLs, and enable the Google provider with your OAuth client credentials.
+
+### Known limitation
+
+The RLS policies allow the anon key to read and write both tables, because the client talks to Supabase directly. Domain restriction is enforced in the client, so a hardened deployment should move role changes and audit writes behind policies keyed on the authenticated JWT or a server function.
